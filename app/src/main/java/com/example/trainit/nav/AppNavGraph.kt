@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.trainit.auth.AuthRepository
+import com.example.trainit.data.UserRepository
 import com.example.trainit.ui.theme.screens.*
 
 @Composable
@@ -14,33 +15,45 @@ fun AppNavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    val repo = AuthRepository()
+    val authRepo = AuthRepository()
+    val userRepo = UserRepository()
 
     NavHost(
         navController = navController,
         startDestination = Routes.Splash.route,
         modifier = modifier
     ) {
-
         composable(Routes.Splash.route) {
             SplashScreen()
 
-            // Redirección segura en el arranque
             LaunchedEffect(Unit) {
-                val next = if (repo.isUserLoggedIn()) Routes.Home.route else Routes.Login.route
+                val uid = authRepo.currentUid()
+
+                val next = if (uid == null) {
+                    Routes.Login.route
+                } else {
+                    val hasProfile = try {
+                        userRepo.hasProfile(uid)
+                    } catch (e: Exception) {
+                        false
+                    }
+                    if (hasProfile) Routes.Home.route else Routes.Onboarding.route
+                }
+
                 navController.navigate(next) {
                     popUpTo(Routes.Splash.route) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
         }
 
-        // Auth
         composable(Routes.Login.route) {
             LoginScreen(
                 onGoToRegister = { navController.navigate(Routes.Register.route) },
                 onLoginSuccess = {
-                    navController.navigate(Routes.Home.route) {
+                    navController.navigate(Routes.Splash.route) {
                         popUpTo(Routes.Login.route) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -50,28 +63,37 @@ fun AppNavGraph(
             RegisterScreen(
                 onGoToLogin = { navController.popBackStack() },
                 onRegisterSuccess = {
-                    navController.navigate(Routes.Home.route) {
+                    navController.navigate(Routes.Onboarding.route) {
                         popUpTo(Routes.Register.route) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
         }
 
-        composable(Routes.Onboarding.route) { OnboardingScreen() }
+        composable(Routes.Onboarding.route) {
+            OnboardingScreen(
+                onFinish = {
+                    navController.navigate(Routes.Home.route) {
+                        popUpTo(Routes.Onboarding.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
 
-        // Main
         composable(Routes.Home.route) { HomeScreen() }
         composable(Routes.Plan.route) { PlanScreen() }
-        composable(Routes.LogWorkout.route) { LogWorkoutScreen() }
         composable(Routes.History.route) { HistoryScreen() }
+        composable(Routes.LogWorkout.route) { LogWorkoutScreen() }
 
         composable(Routes.Profile.route) {
-            // si ya lo tienes con logout, mantenlo como lo tengas
             ProfileScreen(
                 onLogout = {
-                    repo.logout()
+                    authRepo.logout()
                     navController.navigate(Routes.Login.route) {
-                        popUpTo(Routes.Home.route) { inclusive = true }
+                        popUpTo(Routes.Profile.route) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
