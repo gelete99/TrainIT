@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "136489898968",
+    "project_id": "trainit-1ee37",
+    "storage_bucket": "trainit-1ee37.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:136489898968:android:f05306d2c88374235ed8ad",
+        "android_client_info": {
+          "package_name": "com.example.trainit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs_aPrkjuypy51CnlST_JPExlzFPVZbcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

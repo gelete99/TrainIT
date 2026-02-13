@@ -3,6 +3,7 @@ package com.example.trainit.nav
 sealed class Routes(val route: String) {
 
     // Auth / Onboarding
+    data object Splash : Routes("splash")
     data object Login : Routes("login")
     data object Register : Routes("register")
     data object Onboarding : Routes("onboarding")
