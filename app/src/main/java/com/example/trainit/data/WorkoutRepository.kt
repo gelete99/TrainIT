@@ -12,7 +12,7 @@ class WorkoutRepository {
     suspend fun addWorkout(uid: String, workout: Workout): Result<Unit> {
         return try {
             val col = db.collection("users").document(uid).collection("workouts")
-            val doc = col.document() // genera id
+            val doc = col.document()
             val workoutWithId = workout.copy(id = doc.id)
             doc.set(workoutWithId).await()
             Result.success(Unit)
@@ -37,4 +37,3 @@ class WorkoutRepository {
         }
     }
 }
-
