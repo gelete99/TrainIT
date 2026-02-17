@@ -3,12 +3,12 @@ package com.example.trainit.ui.theme.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.trainit.auth.AuthViewModel
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+
 
 @Composable
 fun LoginScreen(
@@ -21,52 +21,42 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("TrainIT", style = MaterialTheme.typography.headlineMedium)
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Text("Iniciar sesión", style = MaterialTheme.typography.headlineSmall)
 
         OutlinedTextField(
-            value = state.email,
-            onValueChange = vm::onEmailChange,
-            label = { Text("Email") },
-            singleLine = true,
+            value = state.username,
+            onValueChange = vm::onUsernameChange,
+            label = { Text("Nombre de usuario") },
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedTextField(
             value = state.password,
             onValueChange = vm::onPasswordChange,
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Contraseña") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (state.errorMessage != null) {
-            Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+        state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         Button(
-            onClick = { vm.login(onSuccess = onLoginSuccess) },
+            onClick = { vm.login(onLoginSuccess) },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (state.isLoading) "Entrando..." else "Login")
+            if (state.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(10.dp))
+            }
+            Text("Entrar")
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
         TextButton(onClick = onGoToRegister) {
-            Text("Crear cuenta")
+            Text("No tengo cuenta → Registrarme")
         }
     }
 }

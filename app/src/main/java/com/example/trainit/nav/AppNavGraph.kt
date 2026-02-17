@@ -23,8 +23,6 @@ fun AppNavGraph(
         startDestination = Routes.Splash.route,
         modifier = modifier
     ) {
-
-        // Splash decide: Login vs Onboarding vs Home
         composable(Routes.Splash.route) {
             SplashScreen()
 
@@ -34,13 +32,12 @@ fun AppNavGraph(
                 val next = if (uid == null) {
                     Routes.Login.route
                 } else {
-                    val hasProfile = try {
-                        userRepo.hasProfile(uid)
+                    val completed = try {
+                        userRepo.hasCompletedOnboarding(uid)
                     } catch (_: Exception) {
                         false
                     }
-
-                    if (hasProfile) Routes.Home.route else Routes.Onboarding.route
+                    if (completed) Routes.Home.route else Routes.Onboarding.route
                 }
 
                 navController.navigate(next) {
@@ -54,7 +51,6 @@ fun AppNavGraph(
             LoginScreen(
                 onGoToRegister = { navController.navigate(Routes.Register.route) },
                 onLoginSuccess = {
-                    // Ir a Splash para decidir Home u Onboarding
                     navController.navigate(Routes.Splash.route) {
                         popUpTo(Routes.Login.route) { inclusive = true }
                         launchSingleTop = true
@@ -88,10 +84,7 @@ fun AppNavGraph(
 
         composable(Routes.Home.route) { HomeScreen() }
         composable(Routes.Plan.route) { PlanScreen() }
-
-
         composable(Routes.History.route) { HistoryScreen() }
-
 
         composable(Routes.LogWorkout.route) {
             LogWorkoutScreen(

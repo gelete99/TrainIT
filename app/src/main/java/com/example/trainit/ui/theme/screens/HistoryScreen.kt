@@ -1,24 +1,12 @@
 package com.example.trainit.ui.theme.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -27,6 +15,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.WorkoutRepository
 import com.example.trainit.data.model.Workout
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +24,7 @@ import java.util.Locale
 fun HistoryScreen() {
     val authRepo = AuthRepository()
     val workoutRepo = WorkoutRepository()
+    val scope = rememberCoroutineScope()
 
     var workouts by remember { mutableStateOf<List<Workout>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -42,28 +32,27 @@ fun HistoryScreen() {
 
     // Trigger para recargar
     var refreshKey by remember { mutableIntStateOf(0) }
+    fun requestRefresh() { refreshKey++ }
 
-    fun requestRefresh() {
-        refreshKey++
-    }
+    // Borrar
+    var deleteTarget by remember { mutableStateOf<Workout?>(null) }
+    var deleting by remember { mutableStateOf(false) }
 
-    // Auto-refresh al volver a la pantalla (ON_RESUME)
+    // Auto refresh ON_RESUME
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                requestRefresh()
-            }
+            if (event == Lifecycle.Event.ON_RESUME) requestRefresh()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Carga inicial + recargas por refreshKey
+    // Carga inicial + recargas
     LaunchedEffect(refreshKey) {
         val uid = authRepo.currentUid()
         if (uid == null) {
-            error = "Sesión no válida. Vuelve a iniciar sesión."
+            error = "Sesión no válida."
             loading = false
             return@LaunchedEffect
         }
@@ -71,15 +60,51 @@ fun HistoryScreen() {
         loading = true
         error = null
 
-        val result = workoutRepo.getWorkouts(uid)
+        val res = workoutRepo.getWorkouts(uid)
         loading = false
 
-        result.onSuccess { workouts = it }
+        res.onSuccess { workouts = it }
             .onFailure { e -> error = e.message ?: "Error cargando historial" }
     }
 
-    val df = remember {
-        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+    val df = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
+
+    // Dialog confirmación borrar
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { if (!deleting) deleteTarget = null },
+            title = { Text("Borrar entrenamiento") },
+            text = { Text("¿Seguro que quieres borrar este entrenamiento?") },
+            confirmButton = {
+                TextButton(
+                    enabled = !deleting,
+                    onClick = {
+                        val uid = authRepo.currentUid() ?: return@TextButton
+                        val w = deleteTarget ?: return@TextButton
+
+                        deleting = true
+                        scope.launch {
+                            val del = workoutRepo.deleteWorkout(uid, w.id)
+                            deleting = false
+                            deleteTarget = null
+
+                            del.onSuccess { requestRefresh() }
+                                .onFailure { e -> error = e.message ?: "Error borrando" }
+                        }
+                    }
+                ) {
+                    Text(if (deleting) "Borrando..." else "Borrar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !deleting,
+                    onClick = { deleteTarget = null }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Column(
@@ -97,9 +122,7 @@ fun HistoryScreen() {
 
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(12.dp))
-            Text("Vuelve a abrir esta pantalla para reintentar.")
-            return@Column
+            Spacer(Modifier.height(8.dp))
         }
 
         if (workouts.isEmpty()) {
@@ -122,9 +145,21 @@ fun HistoryScreen() {
                         .padding(bottom = 10.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(w.type, style = MaterialTheme.typography.titleMedium)
-                        Text("${w.durationMin} min")
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(w.type, style = MaterialTheme.typography.titleMedium)
+
+                            IconButton(onClick = { deleteTarget = w }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Borrar")
+                            }
+                        }
+
+                        Text("${w.durationMin} min · RPE ${w.rpe}/10")
                         Text(df.format(Date(w.date)))
+
                         if (w.notes.isNotBlank()) {
                             Spacer(Modifier.height(6.dp))
                             Text(w.notes)

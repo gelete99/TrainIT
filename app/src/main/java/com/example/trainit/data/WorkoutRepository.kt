@@ -36,4 +36,18 @@ class WorkoutRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun deleteWorkout(uid: String, workoutId: String): Result<Unit> {
+        return try {
+            db.collection("users")
+                .document(uid)
+                .collection("workouts")
+                .document(workoutId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

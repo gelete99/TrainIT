@@ -5,16 +5,88 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.firebase.auth.FirebaseAuth
+import com.example.trainit.auth.AuthRepository
+import com.example.trainit.data.UserRepository
+import com.example.trainit.data.model.UserProfile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
     onLogout: () -> Unit
 ) {
-    val user = remember { FirebaseAuth.getInstance().currentUser }
+    val authRepo = AuthRepository()
+    val userRepo = UserRepository()
+    val scope = rememberCoroutineScope()
 
-    val email = user?.email ?: "—"
-    val uid = user?.uid ?: "—"
+    var profile by remember { mutableStateOf<UserProfile?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    var editGoalOpen by remember { mutableStateOf(false) }
+    var newGoal by remember { mutableStateOf("") }
+    var savingGoal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val uid = authRepo.currentUid()
+        if (uid == null) {
+            loading = false
+            error = "Sesión no válida."
+            return@LaunchedEffect
+        }
+
+        loading = true
+        error = null
+        val res = userRepo.getProfile(uid)
+        loading = false
+
+        res.onSuccess {
+            profile = it
+            newGoal = it.goal
+        }.onFailure {
+            error = it.message ?: "Error cargando perfil"
+        }
+    }
+
+    if (editGoalOpen) {
+        AlertDialog(
+            onDismissRequest = { if (!savingGoal) editGoalOpen = false },
+            title = { Text("Cambiar objetivo") },
+            text = {
+                OutlinedTextField(
+                    value = newGoal,
+                    onValueChange = { newGoal = it },
+                    label = { Text("Nuevo objetivo") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !savingGoal,
+                    onClick = {
+                        val uid = authRepo.currentUid() ?: return@TextButton
+                        val clean = newGoal.trim()
+                        if (clean.isBlank()) return@TextButton
+
+                        savingGoal = true
+                        scope.launch(Dispatchers.Main) {
+                            val r = userRepo.updateGoal(uid, clean)
+                            savingGoal = false
+                            r.onSuccess {
+                                profile = profile?.copy(goal = clean)
+                                editGoalOpen = false
+                            }.onFailure { e ->
+                                error = e.message ?: "Error actualizando objetivo"
+                            }
+                        }
+                    }
+                ) { Text(if (savingGoal) "Guardando..." else "Guardar") }
+            },
+            dismissButton = {
+                TextButton(enabled = !savingGoal, onClick = { editGoalOpen = false }) { Text("Cancelar") }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -24,27 +96,48 @@ fun ProfileScreen(
     ) {
         Text("Perfil", style = MaterialTheme.typography.headlineSmall)
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Cuenta", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text("Email: $email")
-                Spacer(Modifier.height(6.dp))
-                Text("UID: $uid", style = MaterialTheme.typography.bodySmall)
-            }
+        if (loading) {
+            Text("Cargando…")
+            return@Column
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Estado", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text("• Login: OK (Firebase Auth)")
-                Text("• Perfil: OK (Firestore users/{uid})")
-                Text("• Workouts: OK (Firestore users/{uid}/workouts)")
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+        val p = profile
+        if (p != null) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Cuenta", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Email: ${p.email.ifBlank { authRepo.currentEmail() ?: "—" }}")
+                    Text("Usuario: ${p.username}")
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Datos físicos", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Altura: ${p.heightCm} cm")
+                    Text("Peso: ${p.weightKg} kg")
+                    Text("Edad: ${p.age} años")
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Entrenamiento", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Nivel: ${p.level}")
+                    Text("Objetivo: ${p.goal}")
+                    Text("Días/semana: ${p.daysPerWeek}")
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { editGoalOpen = true }) {
+                        Text("Cambiar objetivo")
+                    }
+                }
             }
         }
-
-        Spacer(Modifier.height(8.dp))
 
         Button(
             onClick = onLogout,
@@ -52,10 +145,5 @@ fun ProfileScreen(
         ) {
             Text("Cerrar sesión")
         }
-
-        Text(
-            "Nota: más adelante puedes añadir edición de perfil (nivel, objetivo, días/semana, equipo).",
-            style = MaterialTheme.typography.bodySmall
-        )
     }
 }
