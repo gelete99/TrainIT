@@ -8,12 +8,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.UserRepository
-import com.example.trainit.ui.theme.screens.*
+import com.example.trainit.ui.theme.screens.HistoryScreen
+import com.example.trainit.ui.theme.screens.HomeScreen
+import com.example.trainit.ui.theme.screens.LogWorkoutScreen
+import com.example.trainit.ui.theme.screens.LoginScreen
+import com.example.trainit.ui.theme.screens.OnboardingScreen
+import com.example.trainit.ui.theme.screens.PlanScreen
+import com.example.trainit.ui.theme.screens.ProfileScreen
+import com.example.trainit.ui.theme.screens.RegisterScreen
+import com.example.trainit.ui.theme.screens.SplashScreen
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showMessage: (String) -> Unit
 ) {
     val authRepo = AuthRepository()
     val userRepo = UserRepository()
@@ -51,6 +60,7 @@ fun AppNavGraph(
             LoginScreen(
                 onGoToRegister = { navController.navigate(Routes.Register.route) },
                 onLoginSuccess = {
+                    // ✅ sin snackbar (no lo quieres)
                     navController.navigate(Routes.Splash.route) {
                         popUpTo(Routes.Login.route) { inclusive = true }
                         launchSingleTop = true
@@ -63,6 +73,7 @@ fun AppNavGraph(
             RegisterScreen(
                 onGoToLogin = { navController.popBackStack() },
                 onRegisterSuccess = {
+                    // ✅ sin snackbar (no lo quieres)
                     navController.navigate(Routes.Onboarding.route) {
                         popUpTo(Routes.Register.route) { inclusive = true }
                         launchSingleTop = true
@@ -74,6 +85,7 @@ fun AppNavGraph(
         composable(Routes.Onboarding.route) {
             OnboardingScreen(
                 onFinish = {
+                    showMessage("Perfil guardado")
                     navController.navigate(Routes.Home.route) {
                         popUpTo(Routes.Onboarding.route) { inclusive = true }
                         launchSingleTop = true
@@ -84,11 +96,15 @@ fun AppNavGraph(
 
         composable(Routes.Home.route) { HomeScreen() }
         composable(Routes.Plan.route) { PlanScreen() }
-        composable(Routes.History.route) { HistoryScreen() }
+
+        composable(Routes.History.route) {
+            HistoryScreen(showMessage = showMessage) // aquí se usa "Entrenamiento eliminado"
+        }
 
         composable(Routes.LogWorkout.route) {
             LogWorkoutScreen(
                 onSaved = {
+                    showMessage("Entrenamiento guardado")
                     navController.navigate(Routes.History.route) {
                         popUpTo(Routes.LogWorkout.route) { inclusive = true }
                         launchSingleTop = true
@@ -99,10 +115,12 @@ fun AppNavGraph(
 
         composable(Routes.Profile.route) {
             ProfileScreen(
+                showMessage = showMessage, // aquí se usa "Objetivo cambiado"
                 onLogout = {
                     authRepo.logout()
+                    // ✅ sin snackbar (no lo quieres)
                     navController.navigate(Routes.Login.route) {
-                        popUpTo(Routes.Profile.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true } // limpia todo el stack
                         launchSingleTop = true
                     }
                 }

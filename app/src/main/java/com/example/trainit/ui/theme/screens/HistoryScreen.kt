@@ -21,7 +21,9 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(
+    showMessage: (String) -> Unit
+) {
     val authRepo = AuthRepository()
     val workoutRepo = WorkoutRepository()
     val scope = rememberCoroutineScope()
@@ -88,8 +90,14 @@ fun HistoryScreen() {
                             deleting = false
                             deleteTarget = null
 
-                            del.onSuccess { requestRefresh() }
-                                .onFailure { e -> error = e.message ?: "Error borrando" }
+                            del.onSuccess {
+                                showMessage("Entrenamiento eliminado")
+                                requestRefresh()
+                            }.onFailure { e ->
+                                val msg = e.message ?: "Error borrando"
+                                error = msg
+                                showMessage(msg)
+                            }
                         }
                     }
                 ) {
@@ -152,7 +160,10 @@ fun HistoryScreen() {
                         ) {
                             Text(w.type, style = MaterialTheme.typography.titleMedium)
 
-                            IconButton(onClick = { deleteTarget = w }) {
+                            IconButton(
+                                enabled = !deleting,
+                                onClick = { deleteTarget = w }
+                            ) {
                                 Icon(Icons.Filled.Delete, contentDescription = "Borrar")
                             }
                         }

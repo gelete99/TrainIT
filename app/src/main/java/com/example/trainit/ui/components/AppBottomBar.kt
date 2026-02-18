@@ -1,43 +1,60 @@
 package com.example.trainit.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.navOptions
 import com.example.trainit.nav.Routes
+
+private data class BottomItem(
+    val label: String,
+    val route: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
 
 @Composable
 fun AppBottomBar(navController: NavController) {
+
     val items = listOf(
-        Triple("Home", Routes.Home.route, Icons.Outlined.Home),
-        Triple("Plan", Routes.Plan.route, Icons.Outlined.FitnessCenter),
-        Triple("History", Routes.History.route, Icons.Outlined.History),
-        Triple("Profile", Routes.Profile.route, Icons.Outlined.AccountCircle),
+        BottomItem("Home", Routes.Home.route, Icons.Filled.Home),
+        BottomItem("Plan", Routes.Plan.route, Icons.Filled.CalendarMonth),
+        BottomItem("History", Routes.History.route, Icons.Filled.Timeline),
+        BottomItem("Profile", Routes.Profile.route, Icons.Filled.Person)
     )
 
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val navBackStackEntry = navController.currentBackStackEntryAsState().value
+    val currentDestination = navBackStackEntry?.destination
 
     NavigationBar {
-        items.forEach { (label, route, icon) ->
+        items.forEach { item ->
+            val selected = currentDestination
+                ?.hierarchy
+                ?.any { it.route == item.route } == true
+
             NavigationBarItem(
-                selected = currentRoute == route,
+                selected = selected,
                 onClick = {
-                    navController.navigate(route) {
+                    navController.navigate(item.route, navOptions {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
                         launchSingleTop = true
                         restoreState = true
-                        popUpTo(Routes.Home.route) { saveState = true }
-                    }
+                    })
                 },
-                icon = { Icon(icon, contentDescription = label) },
-                label = { Text(label) }
+                icon = { Icon(item.icon, contentDescription = item.label) },
+                label = { Text(item.label) }
             )
         }
     }

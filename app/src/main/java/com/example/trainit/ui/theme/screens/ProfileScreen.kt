@@ -8,11 +8,11 @@ import androidx.compose.ui.unit.dp
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.UserRepository
 import com.example.trainit.data.model.UserProfile
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
+    showMessage: (String) -> Unit,
     onLogout: () -> Unit
 ) {
     val authRepo = AuthRepository()
@@ -37,6 +37,7 @@ fun ProfileScreen(
 
         loading = true
         error = null
+
         val res = userRepo.getProfile(uid)
         loading = false
 
@@ -66,24 +67,34 @@ fun ProfileScreen(
                     onClick = {
                         val uid = authRepo.currentUid() ?: return@TextButton
                         val clean = newGoal.trim()
-                        if (clean.isBlank()) return@TextButton
+                        if (clean.isBlank()) {
+                            showMessage("El objetivo no puede estar vacío")
+                            return@TextButton
+                        }
 
                         savingGoal = true
-                        scope.launch(Dispatchers.Main) {
+                        scope.launch {
                             val r = userRepo.updateGoal(uid, clean)
                             savingGoal = false
+
                             r.onSuccess {
                                 profile = profile?.copy(goal = clean)
                                 editGoalOpen = false
+                                showMessage("Objetivo actualizado")
                             }.onFailure { e ->
-                                error = e.message ?: "Error actualizando objetivo"
+                                val msg = e.message ?: "Error actualizando objetivo"
+                                error = msg
+                                showMessage(msg)
                             }
                         }
                     }
                 ) { Text(if (savingGoal) "Guardando..." else "Guardar") }
             },
             dismissButton = {
-                TextButton(enabled = !savingGoal, onClick = { editGoalOpen = false }) { Text("Cancelar") }
+                TextButton(
+                    enabled = !savingGoal,
+                    onClick = { editGoalOpen = false }
+                ) { Text("Cancelar") }
             }
         )
     }
