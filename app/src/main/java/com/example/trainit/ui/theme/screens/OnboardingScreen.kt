@@ -154,8 +154,9 @@ fun OnboardingScreen(
                 val height = heightText.toIntOrNull() ?: 0
                 val weight = weightText.toIntOrNull() ?: 0
                 val age = ageText.toIntOrNull() ?: 0
+                val cleanGoal = goal.trim()
 
-                if (goal.trim().isBlank()) {
+                if (cleanGoal.isBlank()) {
                     error = "Introduce tu objetivo."
                     return@Button
                 }
@@ -167,18 +168,17 @@ fun OnboardingScreen(
                 loading = true
                 error = null
 
-                val updates = mapOf(
-                    "level" to level,
-                    "goal" to goal.trim(),
-                    "daysPerWeek" to daysPerWeek,
-                    "heightCm" to height,
-                    "weightKg" to weight,
-                    "age" to age,
-                    "onboardingCompleted" to true
-                )
-
                 scope.launch(Dispatchers.Main) {
-                    val res = userRepo.saveOnboarding(uid, updates)
+                    val res = userRepo.saveOnboarding(
+                        uid = uid,
+                        level = level,
+                        goal = cleanGoal,
+                        daysPerWeek = daysPerWeek,
+                        heightCm = height,
+                        weightKg = weight,
+                        age = age
+                    )
+
                     loading = false
                     res.onSuccess { onFinish() }
                         .onFailure { e -> error = e.message ?: "Error guardando onboarding" }

@@ -8,18 +8,12 @@ class UserRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    suspend fun hasCompletedOnboarding(uid: String): Boolean {
-        val doc = db.collection("users").document(uid).get().await()
-        val completed = doc.getBoolean("onboardingCompleted") ?: false
-        return doc.exists() && completed
-    }
-
     suspend fun getProfile(uid: String): Result<UserProfile> {
         return try {
-            val doc = db.collection("users").document(uid).get().await()
-            if (!doc.exists()) return Result.failure(Exception("Perfil no encontrado"))
+            val snap = db.collection("users").document(uid).get().await()
+            if (!snap.exists()) return Result.failure(Exception("Perfil no encontrado"))
 
-            val profile = doc.toObject(UserProfile::class.java)
+            val profile = snap.toObject(UserProfile::class.java)
                 ?: return Result.failure(Exception("Perfil inválido"))
 
             Result.success(profile)
@@ -28,23 +22,84 @@ class UserRepository {
         }
     }
 
-    suspend fun saveOnboarding(uid: String, updates: Map<String, Any>): Result<Unit> {
+    suspend fun hasCompletedOnboarding(uid: String): Boolean {
         return try {
-            db.collection("users")
-                .document(uid)
-                .set(updates, com.google.firebase.firestore.SetOptions.merge())
-                .await()
+            val snap = db.collection("users").document(uid).get().await()
+            if (!snap.exists()) return false
+            snap.getBoolean("onboardingCompleted") == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Guarda los datos del onboarding y marca onboardingCompleted=true.
+     * Útil si quieres centralizarlo en repo.
+     */
+    suspend fun saveOnboarding(
+        uid: String,
+        level: String,
+        goal: String,
+        daysPerWeek: Int,
+        heightCm: Int,
+        weightKg: Int,
+        age: Int
+    ): Result<Unit> {
+        return try {
+            val updates = mapOf(
+                "level" to level,
+                "goal" to goal,
+                "daysPerWeek" to daysPerWeek,
+                "heightCm" to heightCm,
+                "weightKg" to weightKg,
+                "age" to age,
+                "onboardingCompleted" to true
+            )
+
+            db.collection("users").document(uid).update(updates).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun updateGoal(uid: String, newGoal: String): Result<Unit> {
+    suspend fun updateGoal(uid: String, goal: String): Result<Unit> {
         return try {
-            db.collection("users").document(uid)
-                .update("goal", newGoal.trim())
+            db.collection("users")
+                .document(uid)
+                .update(mapOf("goal" to goal))
                 .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * ✅ Actualiza datos básicos desde Perfil:
+     * - altura, peso, edad, nivel
+     */
+    suspend fun updateBasics(
+        uid: String,
+        heightCm: Int,
+        weightKg: Int,
+        age: Int,
+        level: String
+    ): Result<Unit> {
+        return try {
+            val updates = mapOf(
+                "heightCm" to heightCm,
+                "weightKg" to weightKg,
+                "age" to age,
+                "level" to level
+            )
+
+            db.collection("users")
+                .document(uid)
+                .update(updates)
+                .await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
