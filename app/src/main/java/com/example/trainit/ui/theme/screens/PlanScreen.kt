@@ -184,7 +184,7 @@ fun PlanScreen() {
                     enabled = !generating,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (generating) "Generando…" else "Regenerar y guardar")
+                    Text(if (generating) "Generando…" else "Generar plan")
                 }
 
                 if (plan.generatedAt > 0) {
