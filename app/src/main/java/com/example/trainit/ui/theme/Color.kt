@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // Brand (azul principal)
 val BrandBlue = Color(0xFF3B82F6)        // azul moderno (tipo fitness/tech)
-val BrandBlueDark = Color(0xFF2563EB)
+val BrandBlueDark = Color(0xFF628CC4)
 
 // Backgrounds (dark, no negro puro)
 val Bg = Color(0xFF0B0F17)

@@ -105,4 +105,16 @@ class UserRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun updateDaysPerWeek(uid: String, daysPerWeek: Int): Result<Unit> {
+        return try {
+            db.collection("users")
+                .document(uid)
+                .update(mapOf("daysPerWeek" to daysPerWeek))
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.example.trainit.ui.theme.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,14 +8,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.WorkoutRepository
 import com.example.trainit.data.model.Workout
+import com.example.trainit.ui.theme.Success
+import com.example.trainit.ui.theme.Surface
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,7 +76,7 @@ fun HistoryScreen(
 
     val df = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
-    // Dialog confirmación borrar
+    // ✅ Dialog confirmación borrar (como tu versión original)
     if (deleteTarget != null) {
         AlertDialog(
             onDismissRequest = { if (!deleting) deleteTarget = null },
@@ -121,7 +126,7 @@ fun HistoryScreen(
             .padding(20.dp)
     ) {
         Text("Historial", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         if (loading) {
             Text("Cargando…")
@@ -140,25 +145,33 @@ fun HistoryScreen(
             return@Column
         }
 
-        val total = workouts.size
-        val totalMin = workouts.sumOf { it.durationMin }
-        Text("Entrenos: $total · Minutos totales: $totalMin")
-        Spacer(Modifier.height(12.dp))
-
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             items(workouts) { w ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Surface),
+                    border = BorderStroke(1.dp, Success.copy(alpha = 0.50f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Header: tipo + delete
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(w.type, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                w.type,
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
 
                             IconButton(
                                 enabled = !deleting,
@@ -168,16 +181,51 @@ fun HistoryScreen(
                             }
                         }
 
-                        Text("${w.durationMin} min · RPE ${w.rpe}/10")
-                        Text(df.format(Date(w.date)))
+                        // Métricas destacadas
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            MetricItem(label = "Duración", value = "${w.durationMin} min")
+                            MetricItem(label = "RPE", value = "${w.rpe}/10")
+                        }
 
+                        // Fecha
+                        Text(
+                            df.format(Date(w.date)),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // Notas / descripción
                         if (w.notes.isNotBlank()) {
-                            Spacer(Modifier.height(6.dp))
-                            Text(w.notes)
+                            HorizontalDivider()
+                            Text(
+                                w.notes,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MetricItem(
+    label: String,
+    value: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            color = Success
+        )
     }
 }

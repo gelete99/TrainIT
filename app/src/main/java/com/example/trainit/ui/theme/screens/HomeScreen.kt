@@ -1,12 +1,18 @@
 package com.example.trainit.ui.theme.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -16,6 +22,7 @@ import com.example.trainit.data.UserRepository
 import com.example.trainit.data.WorkoutRepository
 import com.example.trainit.data.model.UserProfile
 import com.example.trainit.data.model.Workout
+import com.example.trainit.ui.theme.*
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -101,6 +108,13 @@ fun HomeScreen() {
         }
     }
 
+    val shape = RoundedCornerShape(18.dp)
+
+    // 🎨 Colores por sección
+    val objectiveAccent = BrandBlue
+    val statsAccent = Warning
+    val lastWorkoutAccent = Success
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -114,37 +128,45 @@ fun HomeScreen() {
         )
 
         if (loading) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 CircularProgressIndicator()
                 Text("Cargando…", style = MaterialTheme.typography.bodyLarge)
             }
             return@Column
         }
 
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        // Objetivo
+        // ✅ Tu objetivo (AZUL) — Card pro
         profile?.let { p ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            ProCard(
+                accent = objectiveAccent,
+                shape = shape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("Tu objetivo", style = MaterialTheme.typography.titleLarge)
+
                     Text(
                         text = p.goal.ifBlank { "—" },
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(6.dp))
+
                     Text(
                         "Nivel: ${p.level} · ${p.daysPerWeek} días/semana",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
                     Text(
                         "Altura/Peso/Edad: ${p.heightCm} cm · ${p.weightKg} kg · ${p.age} años",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
                 }
             }
@@ -152,37 +174,43 @@ fun HomeScreen() {
 
         // Estado vacío
         if (workouts.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            ProCard(
+                accent = Outline,
+                shape = shape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("Aún no hay entrenamientos", style = MaterialTheme.typography.titleLarge)
                     Text(
                         "Pulsa el botón “+” para registrar tu primer entreno.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
                 }
             }
             return@Column
         }
 
-        // Stats 2x2
+        // ✅ Stats 2x2 (NARANJA) — Cards pro con presencia
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatCard(
-                modifier = Modifier.weight(1f),
+            HomeStatCard(
+                accent = statsAccent,
                 title = "Entrenos",
                 value = totalWorkouts.toString(),
-                subtitle = "Totales"
+                subtitle = "Totales",
+                shape = shape
             )
-            StatCard(
-                modifier = Modifier.weight(1f),
+            HomeStatCard(
+                accent = statsAccent,
                 title = "Minutos",
                 value = totalMinutes.toString(),
-                subtitle = "Totales"
+                subtitle = "Totales",
+                shape = shape
             )
         }
 
@@ -190,44 +218,61 @@ fun HomeScreen() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatCard(
-                modifier = Modifier.weight(1f),
+            HomeStatCard(
+                accent = statsAccent,
                 title = "Semana",
                 value = weekCount.toString(),
-                subtitle = "Entrenos"
+                subtitle = "Entrenos",
+                shape = shape
             )
-            StatCard(
-                modifier = Modifier.weight(1f),
+            HomeStatCard(
+                accent = statsAccent,
                 title = "Semana",
                 value = weekMinutes.toString(),
-                subtitle = "Minutos"
+                subtitle = "Minutos",
+                shape = shape
             )
         }
 
-        // Último entreno
-        Card(modifier = Modifier.fillMaxWidth()) {
+        // ✅ Último entreno (VERDE) — Card pro
+        ProCard(
+            accent = lastWorkoutAccent,
+            shape = shape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text("Último entreno", style = MaterialTheme.typography.titleLarge)
 
                 if (lastWorkout == null) {
                     Text("Aún no has registrado entrenamientos.")
                 } else {
-                    Text(lastWorkout.type, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        lastWorkout.type,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
                     Text(
                         "${lastWorkout.durationMin} min · RPE ${lastWorkout.rpe}/10 · ${daysAgoLabel(lastWorkout.date)}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
+
                     Text(
                         df.format(Date(lastWorkout.date)),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
 
                     if (lastWorkout.notes.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
-                        Text(lastWorkout.notes)
+                        Text(
+                            lastWorkout.notes,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -235,25 +280,59 @@ fun HomeScreen() {
     }
 }
 
+/* ====== Cards pro (mismo estilo que History/Profile) ====== */
+
 @Composable
-private fun StatCard(
+private fun ProCard(
+    accent: Color,
     modifier: Modifier = Modifier,
+    shape: RoundedCornerShape = RoundedCornerShape(18.dp),
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun RowScope.HomeStatCard(
+    accent: Color,
     title: String,
     value: String,
-    subtitle: String
+    subtitle: String,
+    shape: RoundedCornerShape
 ) {
-    Card(modifier = modifier) {
+    Card(
+        modifier = Modifier.weight(1f),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 title,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelLarge,
+                color = TextSecondary
             )
-            Text(value, style = MaterialTheme.typography.headlineMedium)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                color = accent
+            )
+            Text(
+                subtitle,
+                color = TextSecondary
+            )
         }
     }
 }

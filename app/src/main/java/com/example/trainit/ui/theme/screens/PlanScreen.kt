@@ -1,11 +1,17 @@
 package com.example.trainit.ui.theme.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -15,6 +21,10 @@ import com.example.trainit.data.AiRepository
 import com.example.trainit.data.PlanRepository
 import com.example.trainit.data.model.AiPlan
 import com.example.trainit.data.model.DayPlan
+import com.example.trainit.ui.theme.BrandBlue
+import com.example.trainit.ui.theme.BrandBlueDark
+import com.example.trainit.ui.theme.Surface
+import com.example.trainit.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -103,10 +113,12 @@ fun PlanScreen() {
         }
     }
 
+    val shape = RoundedCornerShape(18.dp)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState) // ✅ Scroll vertical
+            .verticalScroll(scrollState)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -194,10 +206,10 @@ fun PlanScreen() {
                     )
                 }
 
-                // Valoración
-                Card(modifier = Modifier.fillMaxWidth()) {
+                // ✅ Valoración (CARD PRO AZUL)
+                ProPlanCard(accent = BrandBlue, shape = shape) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text("Valoración", style = MaterialTheme.typography.titleLarge)
@@ -215,11 +227,11 @@ fun PlanScreen() {
                     }
                 }
 
-                // Recomendaciones
+                // ✅ Recomendaciones (CARD PRO AZUL)
                 if (plan.recommendations.isNotEmpty()) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    ProPlanCard(accent = BrandBlue, shape = shape) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text("Recomendaciones", style = MaterialTheme.typography.titleLarge)
@@ -228,10 +240,10 @@ fun PlanScreen() {
                     }
                 }
 
-                // Plan semanal
-                Card(modifier = Modifier.fillMaxWidth()) {
+                // ✅ Plan semanal header (CARD PRO AZUL)
+                ProPlanCard(accent = BrandBlue, shape = shape) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text("Plan de la semana", style = MaterialTheme.typography.titleLarge)
@@ -242,13 +254,14 @@ fun PlanScreen() {
                     }
                 }
 
-                plan.weeklyPlan.forEach { DayPlanCard(it) }
+                // ✅ Días (DIFERENTES)
+                plan.weeklyPlan.forEach { DayPlanCardPro(it, shape) }
 
-                // Seguridad
+                // ✅ Seguridad (CARD PRO AZUL)
                 if (plan.safetyNotes.isNotEmpty()) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    ProPlanCard(accent = BrandBlue, shape = shape) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text("Notas de seguridad", style = MaterialTheme.typography.titleLarge)
@@ -259,8 +272,26 @@ fun PlanScreen() {
             }
         }
 
-        // ✅ espacio final para que no quede pegado abajo
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/* ====== Helpers ====== */
+
+@Composable
+private fun ProPlanCard(
+    accent: Color,
+    shape: RoundedCornerShape,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        content()
     }
 }
 
@@ -276,53 +307,99 @@ private fun BulletList(items: List<String>) {
     }
 }
 
+/**
+ * Día “pro”:
+ * - Card Surface con borde BrandBlueDark
+ * - barra superior azul oscuro
+ * - chip ENTRENO/DESCANSO para diferenciar rápido
+ * - expand/collapse igual que antes
+ */
 @Composable
-private fun DayPlanCard(dayPlan: DayPlan) {
+private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
     var expanded by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Surface),
+        border = BorderStroke(1.dp, BrandBlueDark.copy(alpha = 0.65f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Barra superior
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(BrandBlueDark)
+            )
+
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(dayPlan.day, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        if (dayPlan.isTrainingDay) dayPlan.focus else "Descanso / Movilidad",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (dayPlan.isTrainingDay) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "${dayPlan.durationMin} min · RPE ${dayPlan.targetRpe}/10",
+                            dayPlan.day,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = BrandBlue
+                        )
+
+                        Text(
+                            if (dayPlan.isTrainingDay) dayPlan.focus else "Descanso / Movilidad",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        if (dayPlan.isTrainingDay) {
+                            Text(
+                                "${dayPlan.durationMin} min · RPE ${dayPlan.targetRpe}/10",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        // Chip estado
+                        AssistChip(
+                            onClick = { /* no-op */ },
+                            label = {
+                                Text(
+                                    if (dayPlan.isTrainingDay) "ENTRENO" else "DESCANSO",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(if (expanded) "Ocultar" else "Ver")
+                        }
                     }
                 }
 
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "Ocultar" else "Ver")
-                }
-            }
+                if (expanded) {
+                    if (dayPlan.notes.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(dayPlan.notes)
+                    }
 
-            if (expanded) {
-                if (dayPlan.notes.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(dayPlan.notes)
-                }
+                    if (dayPlan.session.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Sesión", style = MaterialTheme.typography.titleMedium)
 
-                if (dayPlan.session.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Sesión", style = MaterialTheme.typography.titleMedium)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        dayPlan.session.forEach { ex ->
-                            Text(
-                                "• ${ex.name} — ${ex.sets}x ${ex.reps}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            dayPlan.session.forEach { ex ->
+                                Text(
+                                    "• ${ex.name} — ${ex.sets}x ${ex.reps}",
+                                    color = TextSecondary
+                                )
+                            }
                         }
                     }
                 }

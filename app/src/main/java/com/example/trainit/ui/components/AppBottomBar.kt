@@ -29,8 +29,8 @@ fun AppBottomBar(navController: NavController) {
     val items = listOf(
         BottomItem("Home", Routes.Home.route, Icons.Filled.Home),
         BottomItem("Plan", Routes.Plan.route, Icons.Filled.CalendarMonth),
-        BottomItem("History", Routes.History.route, Icons.Filled.Timeline),
-        BottomItem("Profile", Routes.Profile.route, Icons.Filled.Person)
+        BottomItem("Historial", Routes.History.route, Icons.Filled.Timeline),
+        BottomItem("Perfil", Routes.Profile.route, Icons.Filled.Person)
     )
 
     val navBackStackEntry = navController.currentBackStackEntryAsState().value
