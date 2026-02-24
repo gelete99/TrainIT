@@ -19,14 +19,21 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.AiRepository
 import com.example.trainit.data.PlanRepository
+import com.example.trainit.data.WorkoutRepository
 import com.example.trainit.data.model.AiPlan
 import com.example.trainit.data.model.DayPlan
+import com.example.trainit.data.model.Workout
 import com.example.trainit.ui.theme.BrandBlue
 import com.example.trainit.ui.theme.BrandBlueDark
 import com.example.trainit.ui.theme.Surface
 import com.example.trainit.ui.theme.TextSecondary
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
@@ -42,10 +49,16 @@ fun PlanScreen() {
     val authRepo = AuthRepository()
     val aiRepo = remember { AiRepository() }
     val planRepo = remember { PlanRepository() }
+    val workoutRepo = remember { WorkoutRepository() }
+    val db = remember { FirebaseFirestore.getInstance() }
     val scope = rememberCoroutineScope()
 
     var state by remember { mutableStateOf<PlanUiState>(PlanUiState.Loading) }
     var generating by remember { mutableStateOf(false) }
+
+    // ✅ Persistencia UI de “añadido”
+    val completedDays = remember { mutableStateMapOf<String, Boolean>() }
+    val completingDays = remember { mutableStateMapOf<String, Boolean>() }
 
     // ✅ Scroll state
     val scrollState = rememberScrollState()
@@ -65,6 +78,134 @@ fun PlanScreen() {
 
     val df = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
+    fun completionKey(planGeneratedAt: Long, day: String): String =
+        "${planGeneratedAt}_${day.trim()}"
+
+    fun startOfWeek(date: LocalDate): LocalDate = date.with(DayOfWeek.MONDAY)
+
+    fun dayNameToDayOfWeek(day: String): DayOfWeek? {
+        return when (day.trim().lowercase(Locale.getDefault())) {
+            "lunes" -> DayOfWeek.MONDAY
+            "martes" -> DayOfWeek.TUESDAY
+            "miércoles", "miercoles" -> DayOfWeek.WEDNESDAY
+            "jueves" -> DayOfWeek.THURSDAY
+            "viernes" -> DayOfWeek.FRIDAY
+            "sábado", "sabado" -> DayOfWeek.SATURDAY
+            "domingo" -> DayOfWeek.SUNDAY
+            else -> null
+        }
+    }
+
+    fun dateMillisForDayName(dayName: String): Long {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val monday = startOfWeek(today)
+
+        val dow = dayNameToDayOfWeek(dayName) ?: DayOfWeek.MONDAY
+        val offset = (dow.value - DayOfWeek.MONDAY.value).toLong()
+        val dayDate = monday.plusDays(offset)
+
+        // Hora actual para que se vea “real” en historial
+        val now = java.time.LocalTime.now(zone)
+        return dayDate.atTime(now).atZone(zone).toInstant().toEpochMilli()
+    }
+
+    fun buildWorkoutFromDay(dayPlan: DayPlan): Workout {
+        val notesExercises = if (dayPlan.session.isNotEmpty()) {
+            dayPlan.session.joinToString(separator = "\n") { ex ->
+                "- ${ex.name} — ${ex.sets}x ${ex.reps}"
+            }
+        } else ""
+
+        val mergedNotes = buildString {
+            if (dayPlan.notes.isNotBlank()) append(dayPlan.notes.trim())
+            if (notesExercises.isNotBlank()) {
+                if (isNotEmpty()) append("\n\n")
+                append("Sesión:\n")
+                append(notesExercises)
+            }
+        }
+
+        return Workout(
+            id = "",
+            date = dateMillisForDayName(dayPlan.day),
+            type = dayPlan.focus.ifBlank { "Entreno" },
+            durationMin = dayPlan.durationMin,
+            rpe = dayPlan.targetRpe,
+            notes = mergedNotes
+        )
+    }
+
+    suspend fun loadCompletions(uid: String, planGeneratedAt: Long) {
+        try {
+            val snaps = db.collection("users")
+                .document(uid)
+                .collection("planCompletions")
+                .whereEqualTo("planGeneratedAt", planGeneratedAt)
+                .get()
+                .await()
+
+            snaps.documents.forEach { doc ->
+                completedDays[doc.id] = true
+            }
+        } catch (_: Exception) {
+            // silencioso
+        }
+    }
+
+    fun markDayAsAdded(dayPlan: DayPlan, planGeneratedAt: Long) {
+        val uid = authRepo.currentUid() ?: run {
+            state = PlanUiState.Error("Sesión no válida.")
+            return
+        }
+
+        if (!dayPlan.isTrainingDay) return
+
+        val key = completionKey(planGeneratedAt, dayPlan.day)
+        if (completedDays[key] == true) return
+        if (completingDays[key] == true) return
+
+        completingDays[key] = true
+
+        scope.launch {
+            try {
+                val docRef = db.collection("users")
+                    .document(uid)
+                    .collection("planCompletions")
+                    .document(key)
+
+                // ✅ si ya existe, ya está persistido
+                val existing = docRef.get().await()
+                if (existing.exists()) {
+                    completedDays[key] = true
+                    return@launch
+                }
+
+                // 1) guardar workout
+                val workout = buildWorkoutFromDay(dayPlan)
+                val res = workoutRepo.addWorkout(uid, workout)
+
+                res.onSuccess {
+                    // 2) guardar completion persistente
+                    val data = mapOf(
+                        "planGeneratedAt" to planGeneratedAt,
+                        "day" to dayPlan.day,
+                        "completedAt" to System.currentTimeMillis()
+                    )
+                    docRef.set(data).await()
+
+                    completedDays[key] = true
+                }.onFailure { e ->
+                    state = PlanUiState.Error(e.message ?: "No se pudo añadir al historial")
+                }
+            } catch (e: Exception) {
+                state = PlanUiState.Error(e.message ?: "Error guardando en historial")
+            } finally {
+                completingDays[key] = false
+            }
+        }
+    }
+
     // Cargar plan guardado
     LaunchedEffect(refreshKey) {
         val uid = authRepo.currentUid()
@@ -77,6 +218,14 @@ fun PlanScreen() {
         val res = planRepo.getLatestPlan(uid)
         res.onSuccess { plan ->
             state = if (plan == null) PlanUiState.Empty else PlanUiState.Success(plan)
+
+            completedDays.clear()
+            completingDays.clear()
+
+            // ✅ cargar persistencia “añadido”
+            if (plan != null) {
+                scope.launch { loadCompletions(uid, plan.generatedAt) }
+            }
         }.onFailure { e ->
             state = PlanUiState.Error(e.message ?: "Error cargando plan")
         }
@@ -100,7 +249,12 @@ fun PlanScreen() {
 
                 save.onSuccess {
                     state = PlanUiState.Success(plan)
-                    // ✅ al generar, subimos arriba del todo
+                    completedDays.clear()
+                    completingDays.clear()
+
+                    // ✅ tras generar, cargar completions (debería estar vacío)
+                    scope.launch { loadCompletions(uid, plan.generatedAt) }
+
                     scrollState.animateScrollTo(0)
                 }.onFailure { e ->
                     state = PlanUiState.Error(e.message ?: "No se pudo guardar el plan")
@@ -206,7 +360,6 @@ fun PlanScreen() {
                     )
                 }
 
-                // ✅ Valoración (CARD PRO AZUL)
                 ProPlanCard(accent = BrandBlue, shape = shape) {
                     Column(
                         modifier = Modifier.padding(18.dp),
@@ -227,7 +380,6 @@ fun PlanScreen() {
                     }
                 }
 
-                // ✅ Recomendaciones (CARD PRO AZUL)
                 if (plan.recommendations.isNotEmpty()) {
                     ProPlanCard(accent = BrandBlue, shape = shape) {
                         Column(
@@ -240,7 +392,6 @@ fun PlanScreen() {
                     }
                 }
 
-                // ✅ Plan semanal header (CARD PRO AZUL)
                 ProPlanCard(accent = BrandBlue, shape = shape) {
                     Column(
                         modifier = Modifier.padding(18.dp),
@@ -254,10 +405,17 @@ fun PlanScreen() {
                     }
                 }
 
-                // ✅ Días (DIFERENTES)
-                plan.weeklyPlan.forEach { DayPlanCardPro(it, shape) }
+                plan.weeklyPlan.forEach { dayPlan ->
+                    val key = completionKey(plan.generatedAt, dayPlan.day)
+                    DayPlanCardPro(
+                        dayPlan = dayPlan,
+                        shape = shape,
+                        isCompleting = completingDays[key] == true,
+                        isCompleted = completedDays[key] == true,
+                        onAddToHistory = { markDayAsAdded(dayPlan, plan.generatedAt) }
+                    )
+                }
 
-                // ✅ Seguridad (CARD PRO AZUL)
                 if (plan.safetyNotes.isNotEmpty()) {
                     ProPlanCard(accent = BrandBlue, shape = shape) {
                         Column(
@@ -307,15 +465,14 @@ private fun BulletList(items: List<String>) {
     }
 }
 
-/**
- * Día “pro”:
- * - Card Surface con borde BrandBlueDark
- * - barra superior azul oscuro
- * - chip ENTRENO/DESCANSO para diferenciar rápido
- * - expand/collapse igual que antes
- */
 @Composable
-private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
+private fun DayPlanCardPro(
+    dayPlan: DayPlan,
+    shape: RoundedCornerShape,
+    isCompleting: Boolean,
+    isCompleted: Boolean,
+    onAddToHistory: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -326,7 +483,6 @@ private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Barra superior
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -336,7 +492,7 @@ private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
 
             Column(
                 modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -364,9 +520,8 @@ private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
-                        // Chip estado
                         AssistChip(
-                            onClick = { /* no-op */ },
+                            onClick = { },
                             label = {
                                 Text(
                                     if (dayPlan.isTrainingDay) "ENTRENO" else "DESCANSO",
@@ -380,6 +535,32 @@ private fun DayPlanCardPro(dayPlan: DayPlan, shape: RoundedCornerShape) {
                         TextButton(onClick = { expanded = !expanded }) {
                             Text(if (expanded) "Ocultar" else "Ver")
                         }
+                    }
+                }
+
+                // ✅ Botón discreto “Añadir al historial”
+                if (dayPlan.isTrainingDay) {
+                    OutlinedButton(
+                        onClick = onAddToHistory,
+                        enabled = !isCompleting && !isCompleted,
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, BrandBlue.copy(alpha = 0.55f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandBlue)
+                    ) {
+                        if (isCompleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Text(
+                            when {
+                                isCompleted -> "Añadido al historial ✓"
+                                isCompleting -> "Añadiendo…"
+                                else -> "Añadir al historial"
+                            }
+                        )
                     }
                 }
 

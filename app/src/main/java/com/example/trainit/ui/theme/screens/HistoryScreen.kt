@@ -37,15 +37,12 @@ fun HistoryScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
 
-    // Trigger para recargar
     var refreshKey by remember { mutableIntStateOf(0) }
     fun requestRefresh() { refreshKey++ }
 
-    // Borrar
     var deleteTarget by remember { mutableStateOf<Workout?>(null) }
     var deleting by remember { mutableStateOf(false) }
 
-    // Auto refresh ON_RESUME
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -55,7 +52,6 @@ fun HistoryScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Carga inicial + recargas
     LaunchedEffect(refreshKey) {
         val uid = authRepo.currentUid()
         if (uid == null) {
@@ -76,7 +72,7 @@ fun HistoryScreen(
 
     val df = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
-    // ✅ Dialog confirmación borrar (como tu versión original)
+    // Dialog borrar
     if (deleteTarget != null) {
         AlertDialog(
             onDismissRequest = { if (!deleting) deleteTarget = null },
@@ -160,43 +156,45 @@ fun HistoryScreen(
                         modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Header: tipo + delete
+
+                        // 🔹 Título (ancho completo)
+                        Text(
+                            w.type,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // 🔹 Métricas
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            MetricItem("Duración", "${w.durationMin} min")
+                            MetricItem("RPE", "${w.rpe}/10")
+                        }
+
+                        // 🔹 Fecha + papelera alineada a la derecha
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                w.type,
-                                style = MaterialTheme.typography.titleLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                df.format(Date(w.date)),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
                             )
 
                             IconButton(
                                 enabled = !deleting,
                                 onClick = { deleteTarget = w }
                             ) {
-                                Icon(Icons.Filled.Delete, contentDescription = "Borrar")
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Borrar"
+                                )
                             }
                         }
 
-                        // Métricas destacadas
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            MetricItem(label = "Duración", value = "${w.durationMin} min")
-                            MetricItem(label = "RPE", value = "${w.rpe}/10")
-                        }
-
-                        // Fecha
-                        Text(
-                            df.format(Date(w.date)),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        // Notas / descripción
+                        // 🔹 Divider
                         if (w.notes.isNotBlank()) {
                             HorizontalDivider()
                             Text(
