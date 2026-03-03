@@ -4,6 +4,7 @@ data class UserProfile(
     val uid: String = "",
     val email: String = "",
     val username: String = "",
+    val gender: String = "", 
     val level: String = "principiante",
     val goal: String = "",
     val daysPerWeek: Int = 3,

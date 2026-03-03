@@ -35,6 +35,7 @@ fun ProfileScreen(
     // Campos editables
     var goal by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("principiante") }
+    var gender by remember { mutableStateOf("") } // ✅ NUEVO
     var daysPerWeek by remember { mutableIntStateOf(3) }
     var height by remember { mutableStateOf("") }
     var weightInput by remember { mutableStateOf("") }
@@ -43,6 +44,9 @@ fun ProfileScreen(
     val levels = listOf("principiante", "intermedio", "avanzado")
 
     fun prettyLevel(s: String): String =
+        s.trim().lowercase().replaceFirstChar { it.uppercaseChar() }
+
+    fun prettyGender(s: String): String =
         s.trim().lowercase().replaceFirstChar { it.uppercaseChar() }
 
     // Carga inicial
@@ -64,6 +68,7 @@ fun ProfileScreen(
             profile = p
             goal = p.goal
             level = p.level
+            gender = p.gender // ✅ NUEVO
             daysPerWeek = p.daysPerWeek
             height = if (p.heightCm > 0) p.heightCm.toString() else ""
             weightInput = if (p.weightKg > 0) p.weightKg.toString() else ""
@@ -91,6 +96,10 @@ fun ProfileScreen(
             showMessage("Días por semana no válido")
             return
         }
+        if (gender.isBlank()) {
+            showMessage("Selecciona tu sexo")
+            return
+        }
 
         saving = true
         error = null
@@ -102,7 +111,8 @@ fun ProfileScreen(
                 heightCm = h,
                 weightKg = w,
                 age = a,
-                level = level
+                level = level,
+                gender = gender // ✅ NUEVO
             )
             val rDays = userRepo.updateDaysPerWeek(uid, daysPerWeek)
 
@@ -112,6 +122,7 @@ fun ProfileScreen(
                 profile = profile?.copy(
                     goal = goal.trim(),
                     level = level,
+                    gender = gender, // ✅ NUEVO
                     daysPerWeek = daysPerWeek,
                     heightCm = h,
                     weightKg = w,
@@ -174,6 +185,7 @@ fun ProfileScreen(
 
                 HighlightRow(label = "Usuario", value = p.username.ifBlank { "—" })
                 HighlightRow(label = "Email", value = p.email.ifBlank { "—" })
+                HighlightRow(label = "Sexo", value = if (gender.isBlank()) "—" else prettyGender(gender)) // ✅ NUEVO
 
                 Spacer(Modifier.height(4.dp))
 
@@ -213,7 +225,7 @@ fun ProfileScreen(
             }
         }
 
-        // ✅ Datos físicos (NARANJA) + días por semana
+        // ✅ Datos físicos (NARANJA) + sexo + días por semana
         ProCard(accent = Warning, shape = shape) {
             Column(
                 modifier = Modifier.padding(18.dp),
@@ -221,12 +233,38 @@ fun ProfileScreen(
             ) {
                 Text("Datos físicos", style = MaterialTheme.typography.titleLarge)
 
+                // ✅ Sexo
+                Text("Sexo", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    listOf("hombre", "mujer").forEach { option ->
+                        val selected = gender == option
+                        OutlinedButton(
+                            onClick = { gender = option },
+                            modifier = Modifier.weight(1f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (selected) Warning else Outline.copy(alpha = 0.8f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = if (selected) Warning else TextPrimary
+                            )
+                        ) {
+                            Text(
+                                prettyGender(option),
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
                 // Nivel
-                Text(
-                    "Nivel",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = TextSecondary
-                )
+                Text("Nivel", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

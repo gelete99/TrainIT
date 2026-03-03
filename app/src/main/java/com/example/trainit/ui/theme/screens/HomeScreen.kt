@@ -2,6 +2,8 @@ package com.example.trainit.ui.theme.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -115,9 +117,13 @@ fun HomeScreen() {
     val statsAccent = Warning
     val lastWorkoutAccent = Success
 
+    // ✅ Scroll state
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -277,6 +283,8 @@ fun HomeScreen() {
                 }
             }
         }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 

@@ -1,10 +1,12 @@
 package com.example.trainit.ui.theme.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.trainit.auth.AuthRepository
 import com.example.trainit.data.UserRepository
@@ -23,6 +25,7 @@ fun OnboardingScreen(
     val levels = listOf("principiante", "intermedio", "avanzado")
     val daysOptions = (1..7).toList()
 
+    var gender by remember { mutableStateOf("") } // ✅ NUEVO
     var level by remember { mutableStateOf(levels.first()) }
     var goal by remember { mutableStateOf("") }
     var daysPerWeek by remember { mutableIntStateOf(3) }
@@ -44,6 +47,34 @@ fun OnboardingScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Onboarding", style = MaterialTheme.typography.headlineSmall)
+
+        // ✅ Sexo (botones)
+        Text("Sexo", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            listOf("hombre", "mujer").forEach { option ->
+                val selected = gender == option
+                OutlinedButton(
+                    onClick = { gender = option; error = null },
+                    modifier = Modifier.weight(1f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Text(
+                        option.replaceFirstChar { it.uppercase() },
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
 
         // Nivel (dropdown)
         ExposedDropdownMenuBox(
@@ -151,11 +182,15 @@ fun OnboardingScreen(
                     return@Button
                 }
 
+                val cleanGoal = goal.trim()
                 val height = heightText.toIntOrNull() ?: 0
                 val weight = weightText.toIntOrNull() ?: 0
                 val age = ageText.toIntOrNull() ?: 0
-                val cleanGoal = goal.trim()
 
+                if (gender.isBlank()) {
+                    error = "Selecciona tu sexo."
+                    return@Button
+                }
                 if (cleanGoal.isBlank()) {
                     error = "Introduce tu objetivo."
                     return@Button
@@ -171,6 +206,7 @@ fun OnboardingScreen(
                 scope.launch(Dispatchers.Main) {
                     val res = userRepo.saveOnboarding(
                         uid = uid,
+                        gender = gender, // ✅ NUEVO
                         level = level,
                         goal = cleanGoal,
                         daysPerWeek = daysPerWeek,

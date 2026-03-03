@@ -34,10 +34,10 @@ class UserRepository {
 
     /**
      * Guarda los datos del onboarding y marca onboardingCompleted=true.
-     * Útil si quieres centralizarlo en repo.
      */
     suspend fun saveOnboarding(
         uid: String,
+        gender: String,
         level: String,
         goal: String,
         daysPerWeek: Int,
@@ -47,6 +47,7 @@ class UserRepository {
     ): Result<Unit> {
         return try {
             val updates = mapOf(
+                "gender" to gender,
                 "level" to level,
                 "goal" to goal,
                 "daysPerWeek" to daysPerWeek,
@@ -76,23 +77,22 @@ class UserRepository {
         }
     }
 
-    /**
-     * ✅ Actualiza datos básicos desde Perfil:
-     * - altura, peso, edad, nivel
-     */
+
     suspend fun updateBasics(
         uid: String,
         heightCm: Int,
         weightKg: Int,
         age: Int,
-        level: String
+        level: String,
+        gender: String
     ): Result<Unit> {
         return try {
             val updates = mapOf(
                 "heightCm" to heightCm,
                 "weightKg" to weightKg,
                 "age" to age,
-                "level" to level
+                "level" to level,
+                "gender" to gender
             )
 
             db.collection("users")
