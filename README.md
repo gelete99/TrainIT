@@ -79,7 +79,7 @@ npm run build
 
 Si vas a desplegar funciones:
 
-```
+```****
 firebase login
 firebase functions:secrets:set OPENAI\_API\_KEY
 firebase deploy --only functions
@@ -171,6 +171,8 @@ Se recomienda no subir al repositorio archivos locales o sensibles como:
 * `local.properties`
 * `.idea/`
 * `app/google-services.json`
+
+La aplicación incorpora límite de generación de planes a 10 por día y límite de cuota de OpenAI
 
 ## Estado del proyecto
 
